@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class Brain : MonoBehaviour
 {
+    [SerializeField] CameraController cameraManager;
     [SerializeField] Transform target;
     [SerializeField] Transform IkTargetsParent;
     [SerializeField] List<LegStep> allLegs;
@@ -17,6 +18,7 @@ public class Brain : MonoBehaviour
     [SerializeField] LegStep backLeftLegStep;
     #endregion
 
+    public float heightAdjustmentDamping;
     public float yOffset;
     public float bodyRotationSpeed;
 
@@ -53,7 +55,7 @@ public class Brain : MonoBehaviour
 
     private void Update()
     {
-        input();
+        GetInput();
         offsetBody();
 
         if (autoPilot == false)
@@ -66,13 +68,13 @@ public class Brain : MonoBehaviour
         }
     }
 
-    private void input()
+    private void GetInput()
     {
         float vertical = Input.GetAxisRaw("Vertical");
         float horizontal = Input.GetAxisRaw("Horizontal");
 
         currentMoveDir = new Vector3(horizontal, 0, vertical);
-        currentMoveDir.Normalize();
+        currentMoveDir.Normalize();       
 
         if (Input.GetKey(KeyCode.LeftShift))
         {
@@ -96,8 +98,21 @@ public class Brain : MonoBehaviour
 
         }
 
-       
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+            if (autoPilot)
+            {
+                autoPilot = false;
+                cameraManager.switchModes(autoPilot);
+            }
+            else
+            {
+                autoPilot = true;
+                cameraManager.switchModes(autoPilot);
+            }
+        }
     }
+
     private void Move(Vector3 direction)
     {
         if(direction != Vector3.zero)
@@ -125,7 +140,8 @@ public class Brain : MonoBehaviour
     private void moveToTargetPoint(Vector3 targetPosition)
     {
         float step = maxMoveSpeed * Time.deltaTime;   
-        transform.position = Vector3.MoveTowards(transform.position, targetPosition, step);        
+        transform.position = Vector3.MoveTowards(transform.position, targetPosition, step);
+        transform.LookAt(targetPosition);
     }
 
     private IEnumerator legUpdate()
@@ -186,14 +202,17 @@ public class Brain : MonoBehaviour
         float yOffsetBobbing = yOffset;
         if(currentMoveDir.magnitude == 0)
         {
-            yOffsetBobbing = Mathf.Lerp(yOffset - 0.5f, yOffset + 0.5f, Mathf.PingPong(Time.time, 1));
+            yOffsetBobbing = Mathf.Lerp(yOffset - 1f, yOffset + 1f, Mathf.PingPong(Time.time, 1));
         }
 
         float heightOffset = getAverageHeight().y + yOffsetBobbing;
         Vector3 newNormal = getAverageNormals();
 
-        transform.position = new Vector3(transform.position.x, heightOffset, transform.position.z);
-        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(Vector3.ProjectOnPlane(transform.forward, newNormal), newNormal), 20 * Time.deltaTime);
+        transform.position = new Vector3(transform.position.x, Mathf.Lerp(transform.position.y, heightOffset, heightAdjustmentDamping * Time.deltaTime), transform.position.z);
+        if(autoPilot == false)
+        {
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(Vector3.ProjectOnPlane(transform.forward, newNormal), newNormal), 20 * Time.deltaTime);
+        }
     }
     private Vector3 getAverageHeight()
     {
