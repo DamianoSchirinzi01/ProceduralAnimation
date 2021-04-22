@@ -1,2 +1,2 @@
 # ProceduralAnimation
- Testing procedural animation (Both humanoid and quadruped)
+Procedural animation for an anthropod animal.
